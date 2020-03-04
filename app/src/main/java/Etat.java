@@ -3,5 +3,15 @@ public class Etat {
         e = etat;
     }
 
-    private final String e ;
+    @Override
+    public int hashCode() {
+
+        return e.hashCode();
+    }
+
+    public String getE() {
+        return e;
+    }
+
+    protected final String e ;
 }

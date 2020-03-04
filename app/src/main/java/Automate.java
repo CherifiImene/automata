@@ -1,4 +1,9 @@
+import android.annotation.SuppressLint;
+
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 public class Automate {
@@ -16,6 +21,129 @@ public class Automate {
         }
 
         mInstructions = instructions;
+    }
+
+    public boolean reconnaitreMot(String mot){
+        rendreSimple();
+        char[] alphabet = mot.toCharArray();
+        Iterator<Instruction> instructionIterator = mInstructions.iterator();
+        Instruction instruction;
+        int cpt = 0;
+        while(instructionIterator.hasNext()){
+            instruction = instructionIterator.next();
+            if(alphabet[cpt] != instruction.getMotALire().toCharArray()[0]){
+                return false;
+            }
+            cpt++;
+        }
+        return true;
+    }
+
+    private void rendreSimple() {
+        Iterator<Instruction> iterator = mInstructions.iterator();
+        Instruction instruction;
+        while(iterator.hasNext()){
+            instruction = iterator.next();
+            String motALire = instruction.getMotALire();
+            if(motALire.length()>1){
+                diviserMot(motALire,instruction);
+
+            }
+        }
+
+    }
+
+    private void diviserMot(String motALire,Instruction instruction) {
+        char[] alphabets = motALire.toCharArray();
+        int cpt = 0 ;
+        int poids = instruction.mPoids+1;
+        Etat etatActuel = instruction.getEtatActuel();
+        Etat etatArrivee;
+        while(cpt < motALire.length()){
+            etatArrivee = new Etat(instruction.getEtatActuel().getE()+cpt);
+            InstructionSimple instructionSimple = new InstructionSimple(alphabets[cpt]);
+            instructionSimple.setEtatActuel(etatActuel);
+            instructionSimple.setEtatArrivé(etatArrivee);
+            instructionSimple.setPoids(poids);
+            mInstructions.add(instructionSimple);
+            etatActuel = etatArrivee;
+            poids++;
+            cpt++;
+        }
+
+    }
+
+    public void rendreDeterministe(){
+
+        Map<Integer , HashSet<Instruction>> instructionsRegroupees = estDeterministe();
+        HashSet<Etat> etats = new HashSet<Etat>();
+        HashSet<Instruction> instructionsDeterministe = new HashSet<Instruction>();
+        HashSet<Etat> etatsFinalsDeterministe = new HashSet<Etat>();
+        boolean estFinal = false;
+
+        if (!deterministe){
+            etats.add(mEtatInitial);
+            for (Map.Entry<Integer,HashSet<Instruction>> couple : instructionsRegroupees.entrySet()){
+                SousEnsembleEtat etat = new SousEnsembleEtat("S"+couple.getKey());
+                for (Instruction i:couple.getValue()
+                     ) {
+                    etat.ajouterEtat(i.getEtatArrivé());
+                    if(mEtatFinaux.contains(i.getEtatArrivé()))
+                        estFinal = true;
+                }
+                String mot = couple.getValue().iterator().next().getMotALire();
+                Etat actuel = couple.getValue().iterator().next().getEtatActuel();
+                etats.add(etat);
+                instructionsDeterministe.add(new Instruction(actuel,mot,etat));
+                if (estFinal)
+                    etatsFinalsDeterministe.add(etat);
+            }
+            mInstructions = instructionsDeterministe;
+            mEtats = etats;
+            mEtatFinaux = etatsFinalsDeterministe;
+        }
+
+    }
+
+    private boolean estSimple() {
+        for (Instruction i:mInstructions
+             ) {
+            if(i.getMotALire().length()>1)
+                return false;
+
+        }
+        return true;
+    }
+    /** Met à jour l'attribut deterministe et regroupe les instructions dans le cas où l'automate n'est pas détérministe**/
+    private Map<Integer,HashSet<Instruction>> estDeterministe() {
+        int cpt = 0 ;
+        int cptInstruction = 0;
+        String mot = "";
+        Etat etat;
+        @SuppressLint("UseSparseArrays") Map<Integer,HashSet<Instruction>> nouvelsEtats = new HashMap<>();
+        HashSet<Instruction> instructions = new HashSet<>();
+        for (Instruction inst:mInstructions
+             ) {
+            mot = inst.getMotALire();
+            etat = inst.getEtatActuel();
+            for (Instruction instruction:mInstructions
+                 ) {
+                if ((instruction.getEtatActuel().equals(etat))&&(instruction.getMotALire().equals(mot)))
+                    cpt++;
+                    instructions.add(instruction);
+
+            }
+            if (cpt>1) {
+                deterministe = false;
+                nouvelsEtats.put(cptInstruction,instructions);
+                instructions.clear();
+            }else{
+                deterministe = true;
+            }
+            cpt = 0;
+            cptInstruction++;
+        }
+        return nouvelsEtats;
     }
 
     public void reduire(){
@@ -118,6 +246,8 @@ public class Automate {
     private Set<Etat> mEtats;
     private Etat mEtatInitial;
     private Set<Etat> mEtatFinaux;
-    private Set<Instruction> mInstructions;
+    private Set<Instruction> mInstructions;     //Utiliser un map<poids,listInstructions>
+    private boolean deterministe = false;
+    private boolean simple = false;
 
 }
